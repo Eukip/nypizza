@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:12-alpine
+    container_name: pzny02
+#    ports:
+#      - "5432:5432"
+    env_file:
+      - ./.envs/.env
+    volumes:
+      - /var/lib/postgresql/data
+      - /backups
+#    networks:
+#      - djangonetwork
+  redis:
+    image: redis:alpine
+    container_name: rzny02
+    expose:
+      - "6379"
+#    networks:
+#      - djangonetwork
+  web:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    container_name: dzny02
+#    depends_on:
+#      - db
+    volumes:
+      - ./src:/src
+      - uploads:/src/uploads
+      - staticfiles:/src/staticfiles
+    expose:
+      - "8000"
+    links:
+      - redis
+    env_file:
+      - ./.envs/.env
+#    networks:
+#      - djangonetwork
+#  frontend:
+#    build:
+#      context: .
+#      dockerfile: compose/front/Dockerfile
+#    container_name: dznx02
+#    depends_on:
+#      - web
+#    volumes:
+#      - ./frontend:/frontend
+#    expose:
+#      - "3333"
+  nginx:
+    build:
+      context: .
+      dockerfile: compose/front/Dockerfile
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - staticfiles:/src/staticfiles
+      - uploads:/src/uploads
+      - ./config/nginx/production:/etc/nginx/conf.d
+      - ./letsencrypt:/etc/ssl/private
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/www/certbot
+    depends_on:
+      - web
+    environment:
+      NODE_ENV: production
+
+volumes:
+  uploads:
+  staticfiles:
